@@ -1,0 +1,12 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body { @apply bg-paper text-ink font-sans antialiased; }
+.num { @apply font-mono tabular-nums; }
+.card { @apply bg-white rounded-xl border border-ink/10; }
+.btn { @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 min-h-[44px] text-sm font-semibold transition-colors; }
+.btn-primary { @apply btn bg-brand text-white hover:bg-brand-light; }
+.btn-ghost { @apply btn border border-ink/15 bg-white hover:bg-brand-soft; }
+.btn-danger { @apply btn bg-danger text-white hover:opacity-90; }
+th { @apply text-left text-xs font-semibold uppercase tracking-wide text-ink/60; }

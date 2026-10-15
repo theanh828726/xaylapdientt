@@ -1,0 +1,51 @@
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # LƯU Ý: MinIO không còn phát hành image community trên Docker Hub/quay.io; đây là bản bitnamilegacy (không được vá lỗi).
+  # Chỉ dùng cho dev. Production: dùng S3 còn được bảo trì (SeaweedFS, Garage hoặc S3 của nhà cung cấp) – backend chỉ dùng API S3.
+  minio:
+    image: bitnamilegacy/minio:latest
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      MINIO_DEFAULT_BUCKETS: ${MINIO_BUCKET}
+    volumes:
+      - miniodata:/bitnami/minio/data
+    ports:
+      - "127.0.0.1:9001:9001"   # console quản trị, chỉ truy cập từ máy chủ; ảnh/biên bản đi qua API có phân quyền
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9000/minio/health/live || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build: ./backend
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8000:8000"
+    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+
+volumes:
+  pgdata:
+  miniodata:
