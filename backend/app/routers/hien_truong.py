@@ -1,8 +1,8 @@
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
@@ -32,10 +32,21 @@ def _bc_out(b: BaoCaoHienTruong, anh_tai_len: int = 0) -> dict:
 
 
 @router.get("/bao-cao-hien-truong")
-async def list_bao_cao(ctx: Ctx = Depends(access()), s: AsyncSession = Depends(get_session)):
-    rows = await s.scalars(select(BaoCaoHienTruong).where(BaoCaoHienTruong.du_an_id == ctx.du_an_id).order_by(BaoCaoHienTruong.ngay.desc()))
-    dem = dict((await s.execute(select(AnhHienTruong.bao_cao_id, func.count()).where(AnhHienTruong.du_an_id == ctx.du_an_id)
-                                .group_by(AnhHienTruong.bao_cao_id))).all())
+async def list_bao_cao(limit: int = Query(default=50, ge=1, le=200), offset: int = Query(default=0, ge=0), tu: date | None = None,
+                       den: date | None = None, vi_tri: str | None = Query(default=None, max_length=40),
+                       ctx: Ctx = Depends(access()), s: AsyncSession = Depends(get_session)):
+    """Mới nhất trước, phân trang bằng limit/offset (tối đa 200 dòng/lần); lọc theo khoảng ngày và tên vị trí."""
+    q = select(BaoCaoHienTruong).where(BaoCaoHienTruong.du_an_id == ctx.du_an_id)
+    if tu:
+        q = q.where(BaoCaoHienTruong.ngay >= datetime.combine(tu, datetime.min.time(), tzinfo=VN))
+    if den:
+        q = q.where(BaoCaoHienTruong.ngay < datetime.combine(den + timedelta(days=1), datetime.min.time(), tzinfo=VN))
+    if vi_tri:
+        q = q.where(BaoCaoHienTruong.vi_tri.has(ViTriCot.ten == vi_tri))
+    rows = (await s.scalars(q.order_by(BaoCaoHienTruong.ngay.desc(), BaoCaoHienTruong.id).limit(limit).offset(offset))).all()
+    ids = [b.id for b in rows]
+    dem = dict((await s.execute(select(AnhHienTruong.bao_cao_id, func.count()).where(AnhHienTruong.du_an_id == ctx.du_an_id, AnhHienTruong.bao_cao_id.in_(ids))
+                                .group_by(AnhHienTruong.bao_cao_id))).all()) if ids else {}
     return [_bc_out(b, dem.get(b.id, 0)) for b in rows]
 
 

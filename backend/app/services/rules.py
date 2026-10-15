@@ -8,12 +8,14 @@ Mỗi ViPham là một bản ghi nguyên tử gắn với (vị trí, công tác
 (chỉ dùng cho ma trận / cảnh báo trong panel vị trí / tính toán chặn); các dòng tổng hợp thì hiển thị.
 """
 import re
+import time
 import uuid
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 
-from sqlalchemy import select
+from sqlalchemy import event, select
+from sqlalchemy.orm import Session
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..models import (BaoCaoHienTruong, BuocDuyet, BuocTrangThai, CongTac, CongTacMa, CongTacTT, DeXuatVatTu, DoiSoat,
@@ -73,7 +75,31 @@ def dai_vt(ds: list[str]) -> str:
     return ", ".join(f"VT {n}" for n in so)
 
 
+# Bộ nhớ đệm kết quả theo dự án: danh_gia quét toàn bộ dữ liệu dự án và được gọi ở nhiều endpoint (kể cả mỗi lần đổi trang).
+# Xoá ngay khi có commit trong tiến trình này; giữa các worker, độ cũ tối đa bằng TTL_DEM giây.
+TTL_DEM = 5.0
+_dem: dict[uuid.UUID, tuple[float, list[ViPham]]] = {}
+
+
+@event.listens_for(Session, "after_commit")
+def _xoa_dem(_session: Session) -> None:
+    _dem.clear()
+
+
 async def danh_gia(s: AsyncSession, du_an_id: uuid.UUID, now: datetime | None = None) -> list[ViPham]:
+    """Bản có đệm của `_tinh`. Không đệm khi truyền `now` hoặc khi phiên đang có thay đổi chưa commit. Trả về bản sao danh sách."""
+    cho_phep = now is None and not (s.new or s.dirty or s.deleted)
+    if cho_phep:
+        hit = _dem.get(du_an_id)
+        if hit and time.monotonic() - hit[0] < TTL_DEM:
+            return list(hit[1])
+    kq = await _tinh(s, du_an_id, now)
+    if cho_phep:
+        _dem[du_an_id] = (time.monotonic(), kq)
+    return list(kq)
+
+
+async def _tinh(s: AsyncSession, du_an_id: uuid.UUID, now: datetime | None = None) -> list[ViPham]:
     now = now or datetime.now(timezone.utc)
     hom_nay: date = now.astimezone(VN).date()
     out: list[ViPham] = []

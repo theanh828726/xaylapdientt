@@ -30,4 +30,6 @@ npm run build && npm run lint
 - Màn hình (theo PDF thiết kế): Bản đồ tuyến, Hồ sơ QA/QC, Đề xuất vật tư (+ chi tiết `/de-xuat/:ma`), Đối soát 3 nguồn, Phê duyệt (mobile), Báo cáo hiện trường (mobile, `/bao-cao`); đơn giản chờ thiết kế: Kho & giao nhận, Nhật ký thi công, Thu hồi tuyến cũ, Tổng quan, Tôi, Quản trị.
 
 ## Production
+Xem `docs/TRIEN_KHAI.md` (HTTPS qua `docker-compose.prod.yml`, sao lưu/khôi phục bằng `scripts/sao_luu.sh` và `scripts/khoi_phuc.sh`).
+
 Dùng `requirements.txt` thay `requirements-dev.txt` trong `backend/Dockerfile`, đặt `ENV=production` (tắt /api/docs, từ chối seed), `COOKIE_SECURE=true`, chạy sau Nginx/HTTPS phục vụ cả frontend build và proxy `/api`.

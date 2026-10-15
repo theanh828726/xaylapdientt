@@ -156,6 +156,16 @@ class RefreshToken(Base):
     created_at: Mapped[datetime] = mapped_column(sa.DateTime(timezone=True), server_default=sa.func.now())
 
 
+class DangNhapThatBai(Base):
+    """Mỗi lần đăng nhập sai (dùng chung giữa các worker, sống qua khởi động lại). `email_hash` = sha256 của email chuẩn hóa."""
+    __tablename__ = "dang_nhap_that_bai"
+    id: Mapped[int] = mapped_column(sa.BigInteger, primary_key=True, autoincrement=True)
+    ip: Mapped[str] = mapped_column(sa.String(64))
+    email_hash: Mapped[str] = mapped_column(sa.String(64))
+    luc: Mapped[datetime] = mapped_column(sa.DateTime(timezone=True), server_default=sa.func.now())
+    __table_args__ = (sa.Index("ix_dnt_ip_luc", "ip", "luc"), sa.Index("ix_dnt_email_luc", "email_hash", "luc"))
+
+
 class AuditLog(Base):
     __tablename__ = "audit_log"
     id: Mapped[int] = mapped_column(sa.BigInteger, primary_key=True, autoincrement=True)

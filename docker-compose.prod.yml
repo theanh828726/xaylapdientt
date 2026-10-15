@@ -1,0 +1,27 @@
+# Chạy production:  docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+# Trước đó: npm ci && npm run build (thư mục dist/), đặt chứng chỉ TLS vào deploy/certs/{fullchain.pem,privkey.pem}
+# (xem docs/TRIEN_KHAI.md), sửa tên miền trong deploy/nginx.conf, đặt ENV=production và COOKIE_SECURE=true trong .env.
+services:
+  api:
+    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips='*'"
+    ports: !reset []          # chỉ nginx truy cập được api, không mở cổng ra ngoài
+    environment:
+      ENV: production
+      COOKIE_SECURE: "true"
+  minio:
+    ports: !reset []          # bỏ cổng console quản trị
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    depends_on: [api]
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./deploy/proxy_params.conf:/etc/nginx/proxy_params.conf:ro
+      - ./deploy/certs:/etc/nginx/certs:ro
+      - ./dist:/usr/share/nginx/html:ro
+      - certbot_www:/var/www/certbot
+volumes:
+  certbot_www:

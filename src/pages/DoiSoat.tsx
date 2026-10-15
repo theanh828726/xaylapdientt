@@ -88,6 +88,7 @@ export default function DoiSoat() {
       {sidebar}
       <PageHeader eyebrow="Đối soát Hợp đồng – Bản vẽ – Chỉ dẫn kỹ thuật" title={hm.tieuDe}
         actions={<button className="btn-ghost" disabled title="Cần AI service đọc PDF/OCR (chưa triển khai)">Chạy lại AI trích xuất</button>} />
+      <div className="mb-3"><Alert tone="warn"><b>Dữ liệu minh họa.</b> Hệ thống chưa có dịch vụ AI đọc PDF/OCR: các thông số, trích dẫn, độ tin cậy và vùng bằng chứng dưới đây là dữ liệu mẫu, không phải kết quả đọc từ hợp đồng, bản vẽ hay chỉ dẫn kỹ thuật thật. Đừng dùng để đặt hàng hoặc ra quyết định.</Alert></div>
       {loi && <div className="mb-3"><Alert>{loi}</Alert></div>}
       {msg && <div className="mb-3"><Alert tone="ok">{msg}</Alert></div>}
       <div className="mb-4 grid gap-3 md:grid-cols-3">

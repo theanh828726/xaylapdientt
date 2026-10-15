@@ -1,22 +1,22 @@
-import time
-from collections import defaultdict
+import hashlib
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy import select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..config import settings
 from ..db import get_session
 from ..deps import Ctx, access, perms_of
-from ..models import DuAn, NguoiDung, RefreshToken, ThanhVienDuAn
+from ..models import DangNhapThatBai, DuAn, NguoiDung, RefreshToken, ThanhVienDuAn
 from ..rbac import ROLE_LABEL
 from ..security import create_access_token, hash_refresh, new_refresh_token, verify_password
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 COOKIE = "refresh_token"
-_fails: dict[str, list[float]] = defaultdict(list)
+# Giới hạn đăng nhập sai (đếm trong DB, dùng chung giữa các worker): cặp IP+email 5/phút, một email 10/15 phút, một IP 30/5 phút.
+GIOI_HAN = ((60, 5, "cap"), (900, 10, "email"), (300, 30, "ip"))
 
 
 class LoginIn(BaseModel):
@@ -25,11 +25,30 @@ class LoginIn(BaseModel):
     mat_khau: str = Field(alias="matKhau")
 
 
-def _throttle(key: str) -> None:
-    now = time.monotonic()
-    _fails[key] = [t for t in _fails[key] if now - t < 60]
-    if len(_fails[key]) >= 5:
-        raise HTTPException(429, "Đăng nhập sai quá nhiều lần, thử lại sau 1 phút")
+def _hash_email(email: str) -> str:
+    return hashlib.sha256(email.encode()).hexdigest()
+
+
+def _ip(request: Request) -> str:
+    return (request.client.host if request.client else "-")[:64]
+
+
+async def _throttle(s: AsyncSession, ip: str, eh: str) -> None:
+    now = datetime.now(timezone.utc)
+    for giay, toi_da, loai in GIOI_HAN:
+        q = select(func.count()).select_from(DangNhapThatBai).where(DangNhapThatBai.luc > now - timedelta(seconds=giay))
+        if loai in ("cap", "ip"):
+            q = q.where(DangNhapThatBai.ip == ip)
+        if loai in ("cap", "email"):
+            q = q.where(DangNhapThatBai.email_hash == eh)
+        if (await s.scalar(q) or 0) >= toi_da:
+            raise HTTPException(429, f"Đăng nhập sai quá nhiều lần, thử lại sau {max(1, giay // 60)} phút")
+
+
+async def _ghi_that_bai(s: AsyncSession, ip: str, eh: str) -> None:
+    s.add(DangNhapThatBai(ip=ip, email_hash=eh))
+    await s.execute(delete(DangNhapThatBai).where(DangNhapThatBai.luc < datetime.now(timezone.utc) - timedelta(days=1)))
+    await s.commit()
 
 
 async def payload(s: AsyncSession, user: NguoiDung) -> dict:
@@ -57,11 +76,11 @@ async def _phat_hanh(s: AsyncSession, response: Response, user: NguoiDung) -> di
 @router.post("/login")
 async def login(body: LoginIn, request: Request, response: Response, s: AsyncSession = Depends(get_session)):
     email = body.email.strip().lower()
-    key = f"{request.client.host if request.client else '-'}:{email}"
-    _throttle(key)
+    ip, eh = _ip(request), _hash_email(email)
+    await _throttle(s, ip, eh)
     user = await s.scalar(select(NguoiDung).where(NguoiDung.email == email))
     if not verify_password(body.mat_khau, user.mat_khau_hash if user else None) or not user or not user.active:
-        _fails[key].append(time.monotonic())
+        await _ghi_that_bai(s, ip, eh)
         raise HTTPException(401, "Email hoặc mật khẩu không đúng")
     return await _phat_hanh(s, response, user)
 

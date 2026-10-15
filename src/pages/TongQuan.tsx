@@ -9,7 +9,7 @@ import { BUOC_STYLE, BUOC_THU_TU } from '../lib/buoc'
 
 export default function TongQuan() {
   const { user, can } = useRole()
-  const dem = useAsync(getDem), poles = useAsync(listViTriCot), bc = useAsync(listBaoCao)
+  const dem = useAsync(getDem), poles = useAsync(listViTriCot), bc = useAsync(() => listBaoCao({ limit: 5 }))
   if (!dem || !poles || !bc) return <Loading />
   const so = (b: string) => poles.filter((p) => p.buoc === b).length
   const xong = so('da_keo_day') + so('da_dung_cot') + so('mong_da_nghiem_thu')
