@@ -23,5 +23,5 @@ Backend FastAPI/NestJS + PostgreSQL/PostGIS + MinIO; bản đồ MapLibre GL + K
 Bước (1) backend + auth/vai trò và (2) map thật + import KMZ đã xong (chưa thử với KMZ thật của khách). (3) rule engine và UI quản trị đã xong ở mức dữ liệu hiện có. MinIO + sinh .docx đã xong. Còn lại: (4) mobile Expo (báo cáo hiện trường đã idempotent theo `clientId`).
 
 ## Lệnh
-`docker compose up -d --build` · `docker compose exec api python -m app.seed_demo` · `npm i` · `npm run dev` · `npm run build` (phải xanh trước khi bàn giao; kiểm tra bằng trình duyệt cả desktop 1366 và mobile 390) · `docker compose run --rm --no-deps api pytest -q` (100 test). Chi tiết: README.md.
+`docker compose up -d --build` · `docker compose exec api python -m app.seed_demo` · `npm i` · `npm run dev` · `npm run build` (phải xanh trước khi bàn giao; kiểm tra bằng trình duyệt cả desktop 1366 và mobile 390) · `docker compose run --rm --no-deps api pytest -q` (130 test). Chi tiết: README.md.
 Chờ tài liệu thật từ Tuấn Thành (định mức, mẫu biểu, KMZ) – chưa dùng dữ liệu thật cho đến khi có.

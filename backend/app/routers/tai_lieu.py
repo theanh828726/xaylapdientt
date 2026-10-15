@@ -275,6 +275,8 @@ async def sinh_hang_loat(body: SinhHangLoatIn, ctx: Ctx = Depends(access(P.nghie
 
 @router.get("/cong-tac/{ct_id}/bien-ban")
 async def list_bien_ban(ct_id: uuid.UUID, ctx: Ctx = Depends(access()), s: AsyncSession = Depends(get_session)):
+    if await s.scalar(select(CongTac.id).where(CongTac.id == ct_id, CongTac.du_an_id == ctx.du_an_id)) is None:
+        raise HTTPException(404, "Không tìm thấy công tác")
     rows = await s.scalars(select(BienBan).where(BienBan.du_an_id == ctx.du_an_id, BienBan.cong_tac_ids.contains([str(ct_id)]))
                            .order_by(BienBan.created_at))
     return [_bb_out(b) for b in rows]

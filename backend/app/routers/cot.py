@@ -157,6 +157,8 @@ async def chi_tiet_vi_tri(vt_id: uuid.UUID, ctx: Ctx = Depends(access()), s: Asy
 @router.get("/vi-tri-cot/{vt_id}/anh")
 async def anh_vi_tri(vt_id: uuid.UUID, ctx: Ctx = Depends(access()), s: AsyncSession = Depends(get_session)):
     """Ảnh của vị trí: tệp đã tải lên kho + số ảnh chỉ khai báo trong báo cáo (chưa có tệp)."""
+    if await s.scalar(select(ViTriCot.id).where(ViTriCot.id == vt_id, ViTriCot.du_an_id == ctx.du_an_id)) is None:
+        raise HTTPException(404, "Không tìm thấy vị trí cột")
     bc = (await s.scalars(select(BaoCaoHienTruong).where(BaoCaoHienTruong.vi_tri_id == vt_id, BaoCaoHienTruong.du_an_id == ctx.du_an_id)
                           .order_by(BaoCaoHienTruong.ngay.desc()))).all()
     anh = (await s.scalars(select(AnhHienTruong).where(AnhHienTruong.bao_cao_id.in_([b.id for b in bc])))).all() if bc else []
