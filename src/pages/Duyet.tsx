@@ -28,10 +28,10 @@ function Chuoi({ c }: { c: HopThuItem['chuoi'] }) {
 }
 
 function The({ it, onXong, onLoi }: { it: HopThuItem; onXong: (m: string) => void; onLoi: (m: string) => void }) {
-  const [lyDo, setLyDo] = useState<string | null>(null), [busy, setBusy] = useState(false)
+  const [lyDo, setLyDo] = useState<string | null>(null), [busy, setBusy] = useState(false), [xacNhan, setXacNhan] = useState(false)
   const gui = async (q: 'duyet' | 'tu_choi', ly?: string) => {
     setBusy(true)
-    try { await duyetBuoc(it.doiTuong, it.id, q, ly); setLyDo(null); onXong(q === 'duyet' ? `Đã duyệt ${it.ma}.` : `Đã trả lại ${it.ma}.`) }
+    try { await duyetBuoc(it.doiTuong, it.id, q, ly); setLyDo(null); setXacNhan(false); onXong(q === 'duyet' ? `Đã duyệt ${it.ma}.` : `Đã trả lại ${it.ma}.`) }
     catch (e) { onLoi(lamLoi(e)) } finally { setBusy(false) }
   }
   return (
@@ -54,9 +54,16 @@ function The({ it, onXong, onLoi }: { it: HopThuItem; onXong: (m: string) => voi
           : <span />}
         <Link to={it.lienKet} className="btn-ghost justify-center">Chi tiết</Link>
         {it.coTheDuyet
-          ? <button className="btn-primary" disabled={busy} onClick={() => gui('duyet')}>{busy ? 'Đang gửi…' : 'Duyệt'}</button>
+          ? <button className="btn-primary" disabled={busy} onClick={() => setXacNhan(true)}>Duyệt</button>
           : <span className="grid place-items-center text-xs text-ink/50">{it.trangThai === 'da_duyet' ? 'Đã duyệt' : it.trangThai === 'tu_choi' ? 'Đã trả lại' : 'Đang chờ cấp khác'}</span>}
       </div>
+      {xacNhan && (
+        <Modal title={`Duyệt ${it.ma}?`} onClose={() => setXacNhan(false)}>
+          <p className="text-sm">{it.tieuDe}</p>
+          <p className="mt-2 text-sm text-ink/65">Sau khi duyệt, hồ sơ chuyển cho bước kế tiếp trong chuỗi duyệt và bạn không thể tự hoàn tác.</p>
+          <div className="mt-3 flex justify-end gap-2"><button className="btn-ghost" onClick={() => setXacNhan(false)}>Huỷ</button>
+            <button className="btn-primary" disabled={busy} onClick={() => gui('duyet')}>{busy ? 'Đang gửi…' : 'Xác nhận duyệt'}</button></div>
+        </Modal>)}
       {lyDo !== null && (
         <Modal title={`Trả lại ${it.ma}`} onClose={() => setLyDo(null)}>
           <label className="block text-sm font-medium" htmlFor={`ly-${it.id}`}>Lý do trả lại (bắt buộc)</label>

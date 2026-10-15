@@ -86,7 +86,7 @@ function Form({ viTriId, poles }: { viTriId: string; poles: ViTriCot[] }) {
       setMsg('Đã gửi báo cáo.'); setTimeout(() => nav('/tong-quan'), 900)
     } catch (e) {
       if (!online || (e instanceof TypeError)) {
-        await luuCho(muc); setMsg('Đang offline — báo cáo và ảnh đã lưu trên máy, sẽ tự gửi khi có mạng.')
+        await luuCho(muc); try { localStorage.removeItem(khoaNhap(viTriId)) } catch { /* bỏ qua */ }; setMsg('Đang offline — báo cáo và ảnh đã lưu trên máy, sẽ tự gửi khi có mạng.')
       } else setLoi(lamLoi(e))
     } finally { setBusy(false) }
   }
@@ -100,7 +100,7 @@ function Form({ viTriId, poles }: { viTriId: string; poles: ViTriCot[] }) {
       <section className="card mb-3 p-4">
         <div className="text-xs text-ink/55">Vị trí</div>
         <div className="flex items-baseline justify-between gap-2"><div className="text-lg font-bold">{vtHien(f.viTri.ten)} <span className="text-sm font-normal text-ink/60">{f.viTri.kmText} · {f.viTri.loaiMong}</span></div>
-          <select aria-label="Đổi vị trí" className="rounded-lg border border-ink/20 bg-white px-2 py-1.5 text-sm" value={viTriId} onChange={(e) => nav(`/bao-cao/${e.target.value}`, { replace: true })}>
+          <select aria-label="Đổi vị trí" className="min-h-[44px] rounded-lg border border-ink/20 bg-white px-2 text-sm" value={viTriId} onChange={(e) => nav(`/bao-cao/${e.target.value}`, { replace: true })}>
             {poles.map((p) => <option key={p.id} value={p.id}>{vtHien(p.ten)}</option>)}</select></div>
         <div className="mt-1 text-xs text-ink/60">{kc != null ? <>Cách vị trí thiết kế <b className="num">{nf(Math.round(kc))} m</b>{kc > 100 && <span className="font-semibold text-danger"> — ngoài phạm vi 100 m</span>}</>
           : 'Chưa có GPS — hãy bật định vị để xác nhận bạn đang ở hiện trường.'}</div>
@@ -112,7 +112,7 @@ function Form({ viTriId, poles }: { viTriId: string; poles: ViTriCot[] }) {
         <div className="flex flex-wrap gap-2">
           {f.congTac.map((c) => (
             <button key={c.ma} disabled={c.khoa} aria-pressed={n.congTacMa === c.ma} onClick={() => set('congTacMa', c.ma)} title={c.lyDoKhoa ?? undefined}
-              className={clsx('flex min-h-[40px] items-center gap-1.5 rounded-full border px-3.5 text-sm font-semibold', n.congTacMa === c.ma ? 'border-brand bg-brand text-white' : 'border-ink/20 bg-white', c.khoa && 'opacity-45')}>
+              className={clsx('flex min-h-[44px] items-center gap-1.5 rounded-full border px-3.5 text-sm font-semibold', n.congTacMa === c.ma ? 'border-brand bg-brand text-white' : 'border-ink/20 bg-white', c.khoa && 'opacity-45')}>
               {c.khoa && <Lock size={13} />}{c.ten}</button>))}
         </div>
         {ct?.khoa && ct.lyDoKhoa && <p className="mt-2 text-xs text-danger">{ct.lyDoKhoa}</p>}
@@ -120,33 +120,36 @@ function Form({ viTriId, poles }: { viTriId: string; poles: ViTriCot[] }) {
         <input id="kl" inputMode="decimal" className="mt-1 w-full rounded-lg border border-ink/20 px-3 py-2.5" value={n.khoiLuong} onChange={(e) => set('khoiLuong', e.target.value)} placeholder="0" />
         <label className="mt-3 flex items-center gap-2 text-sm"><input type="checkbox" checked={n.hoanThanh} onChange={(e) => set('hoanThanh', e.target.checked)} className="size-5" />Đã hoàn thành công tác này</label>
       </section>
-      <section className="card mb-3 space-y-3 p-4">
+      <details className="card mb-3 p-4 [&_summary]:min-h-[44px]">
+        <summary className="flex cursor-pointer items-center justify-between text-sm font-bold">Thông tin thêm <span className="text-xs font-normal text-ink/55">thời tiết, tổ đội, nhân lực, máy, ghi chú (đã điền sẵn)</span></summary>
+      <div className="space-y-3 pt-3">
         <div><div className="mb-1 text-sm font-medium">Thời tiết</div>
           <div className="flex flex-wrap gap-2">{THOI_TIET.map((t) => (
-            <button key={t} aria-pressed={n.thoiTiet === t} onClick={() => set('thoiTiet', t)} className={clsx('min-h-[38px] rounded-full border px-3.5 text-sm', n.thoiTiet === t ? 'border-brand bg-brand-soft font-semibold text-brand' : 'border-ink/20')}>{t}</button>))}</div></div>
+            <button key={t} aria-pressed={n.thoiTiet === t} onClick={() => set('thoiTiet', t)} className={clsx('min-h-[44px] rounded-full border px-4 text-sm', n.thoiTiet === t ? 'border-brand bg-brand-soft font-semibold text-brand' : 'border-ink/20')}>{t}</button>))}</div></div>
         <div><label className="mb-1 block text-sm font-medium" htmlFor="td">Tổ đội</label>
           <select id="td" className="w-full rounded-lg border border-ink/20 bg-white px-3 py-2.5" value={n.toDoi} onChange={(e) => set('toDoi', e.target.value)}>{f.toDoi.map((t) => <option key={t}>{t}</option>)}</select></div>
         <div className="flex items-center justify-between"><span className="text-sm font-medium">Nhân lực</span>
-          <span className="flex items-center gap-3"><button aria-label="Giảm" className="grid size-10 place-items-center rounded-lg border border-ink/20" onClick={() => set('nhanLuc', Math.max(0, n.nhanLuc - 1))}><Minus size={16} /></button>
+          <span className="flex items-center gap-3"><button aria-label="Giảm" className="grid size-11 place-items-center rounded-lg border border-ink/20" onClick={() => set('nhanLuc', Math.max(0, n.nhanLuc - 1))}><Minus size={16} /></button>
             <b className="num w-8 text-center text-lg">{n.nhanLuc}</b>
-            <button aria-label="Tăng" className="grid size-10 place-items-center rounded-lg border border-ink/20" onClick={() => set('nhanLuc', n.nhanLuc + 1)}><Plus size={16} /></button></span></div>
+            <button aria-label="Tăng" className="grid size-11 place-items-center rounded-lg border border-ink/20" onClick={() => set('nhanLuc', n.nhanLuc + 1)}><Plus size={16} /></button></span></div>
         <div><div className="mb-1 text-sm font-medium">Máy thi công</div>
           <div className="flex flex-wrap gap-2">{f.mayThiCong.map((m) => {
             const on = n.may.includes(m)
-            return <button key={m} aria-pressed={on} onClick={() => set('may', on ? n.may.filter((x) => x !== m) : [...n.may, m])} className={clsx('min-h-[38px] rounded-full border px-3.5 text-sm', on ? 'border-brand bg-brand-soft font-semibold text-brand' : 'border-ink/20')}>{m}</button>
+            return <button key={m} aria-pressed={on} onClick={() => set('may', on ? n.may.filter((x) => x !== m) : [...n.may, m])} className={clsx('min-h-[44px] rounded-full border px-4 text-sm', on ? 'border-brand bg-brand-soft font-semibold text-brand' : 'border-ink/20')}>{m}</button>
           })}</div></div>
         <div><label className="mb-1 block text-sm font-medium" htmlFor="gc">Ghi chú</label>
           <textarea id="gc" rows={2} className="w-full rounded-lg border border-ink/20 px-3 py-2" value={n.ghiChu} onChange={(e) => set('ghiChu', e.target.value)} /></div>
-      </section>
+      </div>
+      </details>
       <section className="card p-4">
         <div className="mb-2 flex items-baseline justify-between"><h2 className="text-sm font-bold">Ảnh hiện trường</h2>
           <span className={clsx('text-xs font-semibold', thieuAnh > 0 ? 'text-danger' : 'text-brand')}>{anh.length}/{f.anhToiThieu} ảnh tối thiểu</span></div>
         <input ref={file} type="file" accept="image/*" capture="environment" multiple hidden onChange={(e) => themAnh(e.target.files)} />
         <div className="grid grid-cols-4 gap-2">
           {anh.map((a) => <img key={a.id} src={a.url} alt="Ảnh vừa chụp" className="aspect-square w-full rounded-lg object-cover" />)}
-          <button onClick={() => file.current?.click()} className="grid aspect-square place-items-center rounded-lg border-2 border-dashed border-ink/25 text-ink/60"><Camera size={22} /></button>
+          <button aria-label="Chụp hoặc chọn ảnh" onClick={() => file.current?.click()} className="grid aspect-square place-items-center rounded-lg border-2 border-dashed border-ink/25 text-ink/60"><Camera size={22} /></button>
         </div>
-        <p className="mt-2 text-xs text-ink/55">Ảnh gắn toạ độ GPS lúc chụp{gps ? '' : ' (chưa có GPS)'}.</p>
+        <p className="mt-2 text-xs text-ink/55">Ảnh gắn toạ độ GPS lúc chụp (chỉ dùng để xác nhận bạn đang ở hiện trường){gps ? '' : '; chưa có GPS'}.</p>
       </section>
       {loi && <div className="mt-3"><Alert>{loi}</Alert></div>}
       {msg && <div className="mt-3"><Alert tone="ok">{msg}</Alert></div>}

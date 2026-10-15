@@ -42,3 +42,11 @@ export async function dongBo(duAnId?: string) {
   }
   return n
 }
+
+/** Xoá bản nháp và hàng đợi trên máy (gọi khi đăng xuất để người dùng sau không thấy dữ liệu của người trước). */
+export async function xoaDuLieuMay() {
+  try {
+    for (const k of Object.keys(localStorage)) if (k.startsWith('tuyenso.nhap.')) localStorage.removeItem(k)
+  } catch { /* bỏ qua */ }
+  await tx('readwrite', (s) => s.clear()).catch(() => undefined)
+}

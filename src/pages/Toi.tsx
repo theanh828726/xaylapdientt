@@ -1,10 +1,19 @@
+import { useState } from 'react'
 import { LogOut } from 'lucide-react'
+import { dangCho, xoaDuLieuMay } from '../lib/offline'
 import { useRole } from '../lib/role'
 import { PageHeader } from '../components/ui'
 import { ten2chu } from '../lib/fmt'
 
 export default function Toi() {
   const { user, role, duAn, duAnId, chonDuAn, logout } = useRole()
+  const [canhBao, setCanhBao] = useState<number | null>(null)
+  const dangXuat = async () => { await xoaDuLieuMay(); await logout() }
+  const bamDangXuat = async () => {
+    const n = (await dangCho()).length
+    if (n > 0 && canhBao === null) { setCanhBao(n); return }
+    await dangXuat()
+  }
   return (
     <div className="mx-auto max-w-xl">
       <PageHeader title="Tôi" />
@@ -17,7 +26,8 @@ export default function Toi() {
         <select id="da" className="mt-2 w-full rounded-lg border border-ink/20 bg-white px-3 py-2.5" value={duAnId ?? ''} onChange={(e) => e.target.value !== duAnId && chonDuAn(e.target.value)}>
           {duAn.map((d) => <option key={d.id} value={d.id}>{d.ma} · {d.ten}</option>)}</select>
       </section>
-      <button className="btn-ghost w-full justify-center" onClick={logout}><LogOut size={16} />Đăng xuất</button>
+      {canhBao !== null && <p role="alert" className="mb-3 rounded-lg bg-amber2/15 p-3 text-sm text-[#6b4a00]">Còn <b>{canhBao}</b> báo cáo chưa gửi được (đang chờ mạng). Đăng xuất sẽ <b>xoá</b> chúng khỏi máy này. Hãy kết nối mạng và mở lại màn Báo cáo để gửi trước; hoặc bấm Đăng xuất lần nữa nếu vẫn muốn xoá.</p>}
+      <button className="btn-ghost w-full justify-center" onClick={bamDangXuat}><LogOut size={16} />Đăng xuất</button>
     </div>
   )
 }

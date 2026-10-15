@@ -52,6 +52,7 @@ function BanDoNoiDung({ onImported }: { onImported: () => void }) {
   return (
     <div className="-m-4 flex min-h-full flex-col lg:-m-6 lg:h-full lg:flex-row">
       <section className="flex min-w-0 flex-1 flex-col gap-3 p-4 lg:p-5">
+        <h1 className="sr-only">Bản đồ tuyến</h1>
         <div className="flex flex-wrap items-center gap-2" aria-label="Lớp tuyến">
           {tuyen.map((t) => {
             const on = !tat.includes(t.ma)
